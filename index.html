@@ -133,7 +133,6 @@
     transform: scaleX(-1);
   }
 
-  /* Retro Background Elements */
   .retro-bg {
     position: fixed;
     top: 0;
@@ -208,7 +207,7 @@
     gap: clamp(10px, 3vw, 20px);
     margin-bottom: clamp(30px, 7vw, 46px);
     padding: 0 15px;
-    flex-wrap: wrap;
+    width: 100%;
   }
 
   .node:nth-child(even) { flex-direction: row-reverse; }
@@ -270,7 +269,6 @@
     box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
     line-height: 1.6;
     flex: 1;
-    min-width: 150px;
     word-break: break-word;
   }
 
@@ -443,7 +441,6 @@
 
   .final-back:hover { background: var(--accent2); }
 
-  /* Preloader Styles */
   .preloader {
     position: fixed;
     inset: 0;
@@ -457,7 +454,6 @@
     align-items: center;
     justify-content: center;
     padding: 20px;
-    pointer-events: none;
   }
 
   .preloader.hidden {
@@ -483,7 +479,6 @@
     background: var(--bg2);
     border: 3px solid var(--card);
     box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
-    position: relative;
   }
 
   .pixel-progress-bar {
@@ -491,13 +486,6 @@
     width: 0%;
     background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3), var(--c4));
     transition: width 0.2s ease;
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-  }
-
-  @keyframes shimmer {
-    0% { background-position: 0% center; }
-    100% { background-position: 200% center; }
   }
 
   .preloader-text {
@@ -507,47 +495,17 @@
     margin-top: 15px;
     letter-spacing: 2px;
   }
-
-  .loading-dots {
-    display: inline-block;
-    width: 4px;
-  }
-
-  @keyframes dots {
-    0%, 20% { content: '.'; }
-    40% { content: '..'; }
-    60%, 100% { content: '...'; }
-  }
-
-  @media (max-width: 480px) {
-    .node {
-      flex-direction: column !important;
-      align-items: stretch;
-    }
-
-    .label {
-      min-width: unset;
-      width: 100%;
-    }
-
-    .card {
-      max-height: 85dvh;
-    }
-  }
 </style>
 </head>
 <body>
 
-<!-- PRELOADER -->
 <div class="preloader" id="preloader">
   <div class="preloader-content">
     <div class="preloader-title">LOADING...</div>
     <div class="pixel-progress">
       <div class="pixel-progress-bar" id="progressBar"></div>
     </div>
-    <div class="preloader-text">
-      <span id="loadingText">Gathering Memories</span><span class="loading-dots" id="dots">.</span>
-    </div>
+    <div class="preloader-text">Gathering Memories<span id="dots">.</span></div>
   </div>
 </div>
 
@@ -568,13 +526,13 @@
 
 <div class="map" id="map">
   <svg class="path-svg" id="pathSvg" viewBox="0 0 700 600" preserveAspectRatio="xMidYMid meet">
-    <path id="pathLine" d=""/>
+    <path id="pathLine" d="M 50 500 Q 150 400, 300 350 Q 450 300, 550 200 L 650 100"/>
   </svg>
   <div class="walker-figure" id="walkerFigure"></div>
 </div>
 
 <div class="signature-logo">
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAmYAAAKQCAYAAAA157aOAACXh0lEQVR4nO29e7w1SVnf+9t7v7cZZga5gyA2gjooARTkIgpeUCStMSqaVqOiURSNR6Ph5HI0EUy8GzlKAngBRMQGjajQKEQ/EfGCgIKKQHJUWkSBK" alt="signature">
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAmYAAAKQCAYAAAA157aOAACXh0lEQVR4nO29e7w1SVnf+9t7v7cZZga5gyA2gjooARTkIgpeUCStMSqaVqOiURSNR6Ph5HI0EUy8GzlKAngBRMQGjajQKEQ/EfGCgIKKQHJUWkSBK">
 </div>
 
 <div class="overlay" id="overlay">
@@ -595,94 +553,47 @@
 </div>
 
 <script>
-// ============ PRELOADER SYSTEM ============
-class AssetPreloader {
-  constructor() {
-    this.imagesLoaded = 0;
-    this.audioLoaded = 0;
-    this.totalAssets = 0;
-    this.preloaderEl = document.getElementById('preloader');
-    this.progressBar = document.getElementById('progressBar');
-    this.dotsEl = document.getElementById('dots');
-    this.textEl = document.getElementById('loadingText');
-    this.dotCount = 0;
-    this.dotInterval = null;
-  }
-
+// PRELOADER
+const preloader = {
   init() {
-    this.startDotAnimation();
-    // Collect all images and audio elements
-    const images = document.querySelectorAll('img');
-    const audio = document.querySelectorAll('audio');
-    this.totalAssets = images.length + audio.length + 1; // +1 for onload
+    let loaded = 0;
+    const imgs = document.querySelectorAll('img');
+    const total = imgs.length || 1;
+    const bar = document.getElementById('progressBar');
+    const dots = document.getElementById('dots');
+    let dotCount = 0;
 
-    images.forEach(img => {
-      if (!img.complete) {
-        img.addEventListener('load', () => this.onAssetLoaded());
-        img.addEventListener('error', () => this.onAssetLoaded());
-      } else {
-        this.imagesLoaded++;
-      }
-    });
-
-    audio.forEach(aud => {
-      aud.addEventListener('canplaythrough', () => this.onAssetLoaded());
-      aud.addEventListener('error', () => this.onAssetLoaded());
-    });
-
-    window.addEventListener('load', () => this.onAssetLoaded());
-  }
-
-  onAssetLoaded() {
-    this.imagesLoaded++;
-    const progress = (this.imagesLoaded / this.totalAssets) * 100;
-    this.updateProgress(progress);
-    
-    if (this.imagesLoaded >= this.totalAssets) {
-      this.complete();
-    }
-  }
-
-  updateProgress(percent) {
-    this.progressBar.style.width = Math.min(percent, 95) + '%';
-  }
-
-  startDotAnimation() {
-    this.dotInterval = setInterval(() => {
-      this.dotCount = (this.dotCount + 1) % 4;
-      this.dotsEl.textContent = '.'.repeat(this.dotCount);
+    const dotInterval = setInterval(() => {
+      dotCount = (dotCount + 1) % 4;
+      dots.textContent = '.'.repeat(dotCount);
     }, 400);
-  }
 
-  complete() {
-    clearInterval(this.dotInterval);
-    this.progressBar.style.width = '100%';
-    setTimeout(() => {
-      this.preloaderEl.classList.add('hidden');
-    }, 300);
-  }
-}
+    const check = () => {
+      loaded++;
+      bar.style.width = Math.min((loaded / total) * 100, 95) + '%';
+      if (loaded >= total) {
+        clearInterval(dotInterval);
+        bar.style.width = '100%';
+        setTimeout(() => document.getElementById('preloader').classList.add('hidden'), 300);
+      }
+    };
 
-const preloader = new AssetPreloader();
+    imgs.forEach(img => {
+      if (img.complete) check();
+      else img.addEventListener('load', check);
+    });
+
+    window.addEventListener('load', check);
+    setTimeout(check, 2000);
+  }
+};
 
 const memories = [{"id": 1, "emoji": "🥷🏽", "text": "I will literally always remember this day not just cuz of the mask but cuz of what happened when I was walking back home xD", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 2, "emoji": "🎮", "text": "Gaming sessions were unmatched fr", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 3, "emoji": "🍕", "text": "Pizza runs at 2am hit different", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 4, "emoji": "🎵", "text": "We made our own playlist", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 5, "emoji": "🚗", "text": "Road trips were insane", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 6, "emoji": "⚽", "text": "Sports day was mad competitive", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 7, "emoji": "🎬", "text": "Movie marathons hit hard", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 8, "emoji": "🌙", "text": "Late night talks", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 9, "emoji": "🎂", "text": "This whole year", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 10, "emoji": "💎", "text": "You mean everything", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 11, "emoji": "🔥", "text": "Your vibe is unmatched", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 12, "emoji": "✨", "text": "You shine", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 13, "emoji": "🎯", "text": "Keep pursuing your dreams", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 14, "emoji": "🌟", "text": "You got this", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 15, "emoji": "💪", "text": "Stay strong out there", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 16, "emoji": "🎁", "text": "Every moment with you is a gift", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 17, "emoji": "🌈", "text": "Bright future ahead", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 18, "emoji": "🚀", "text": "Sky's not the limit", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 19, "emoji": "💖", "text": "Real love always", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 20, "emoji": "🎊", "text": "Celebrate yourself", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 21, "emoji": "👑", "text": "You're royalty", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 22, "emoji": "🎪", "text": "This life is a carnival", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 23, "emoji": "🏆", "text": "You won", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 24, "emoji": "🌺", "text": "You bloom", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 25, "emoji": "⭐", "text": "You're a star", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 26, "emoji": "🎨", "text": "Your story is art", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 27, "emoji": "🔮", "text": "Your future's bright", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 28, "emoji": "🎭", "text": "Be unapologetically you", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 29, "emoji": "🌸", "text": "Grow at your own pace", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}, {"id": 30, "emoji": "🎉", "text": "HAPPY BIRTHDAY GORGEOUS", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}];
 
 let openedChests = new Set();
 const map = document.getElementById('map');
-const pathSvg = document.getElementById('pathSvg');
 const pathLine = document.getElementById('pathLine');
 const walkerFigure = document.getElementById('walkerFigure');
-
-// ============ SVG PATH & CHARACTER TRACKING ============
-function generatePath() {
-  const svgWidth = 700;
-  const svgHeight = 600;
-  const d = `M 50 500 
-    Q 150 400, 300 350 
-    Q 450 300, 550 200
-    L 650 100`;
-  pathLine.setAttribute('d', d);
-}
 
 function getPathLength() {
   return pathLine.getTotalLength();
@@ -690,44 +601,30 @@ function getPathLength() {
 
 function getPointOnPath(distance) {
   const pathLength = getPathLength();
-  const normalizedDistance = Math.max(0, Math.min(distance, pathLength));
-  return pathLine.getPointAtLength(normalizedDistance);
+  const norm = Math.max(0, Math.min(distance, pathLength));
+  return pathLine.getPointAtLength(norm);
 }
 
 function updateCharacterPosition() {
   const mapRect = map.getBoundingClientRect();
-  const svgRect = pathSvg.getBoundingClientRect();
-  
-  // Get relative scroll distance from top of page
   const scrollY = window.scrollY || window.pageYOffset;
-  const mapOffsetTop = map.getBoundingClientRect().top + scrollY;
+  const mapTop = map.getBoundingClientRect().top + scrollY;
+  const distFromMap = scrollY - mapTop + window.innerHeight * 0.5;
   
-  const distanceFromMapStart = scrollY - mapOffsetTop + window.innerHeight * 0.5;
-  const pathLength = getPathLength();
+  const point = getPointOnPath(distFromMap);
+  const scale = mapRect.width / 700;
+  const x = point.x * scale - walkerFigure.offsetWidth / 2;
+  const y = point.y * scale - walkerFigure.offsetHeight;
   
-  const point = getPointOnPath(distanceFromMapStart);
+  walkerFigure.style.left = x + 'px';
+  walkerFigure.style.top = y + 'px';
   
-  // Convert SVG coordinates to screen coordinates
-  const scaleFactor = mapRect.width / 700; // SVG viewBox width
-  const scaledX = point.x * scaleFactor;
-  const scaledY = point.y * scaleFactor;
-  
-  walkerFigure.style.left = (scaledX - walkerFigure.offsetWidth / 2) + 'px';
-  walkerFigure.style.top = (scaledY - walkerFigure.offsetHeight) + 'px';
-  
-  // Determine direction
-  const nextPoint = getPointOnPath(distanceFromMapStart + 10);
-  if (nextPoint.x < point.x) {
-    walkerFigure.classList.add('facing-left');
-  } else {
-    walkerFigure.classList.remove('facing-left');
-  }
+  const next = getPointOnPath(distFromMap + 10);
+  walkerFigure.classList.toggle('facing-left', next.x < point.x);
 }
 
-// ============ SCROLL OPTIMIZATION ============
 let ticking = false;
-
-function onScroll() {
+window.addEventListener('scroll', () => {
   if (!ticking) {
     requestAnimationFrame(() => {
       updateCharacterPosition();
@@ -735,36 +632,29 @@ function onScroll() {
     });
     ticking = true;
   }
-}
+});
 
-window.addEventListener('scroll', onScroll, false);
-
-// ============ MEMORY SYSTEM ============
 function createMemoryNodes() {
-  const container = map;
-  memories.forEach((memory, index) => {
+  memories.forEach((mem, i) => {
     const node = document.createElement('div');
     node.className = 'node';
     node.innerHTML = `
-      <div class="chest" onclick="openCard(${memory.id})">
-        <span class="num">${index + 1}</span>
-        ${memory.emoji}
+      <div class="chest" onclick="openCard(${mem.id})">
+        <span class="num">${i + 1}</span>${mem.emoji}
       </div>
-      <div class="label">${memory.text}</div>
+      <div class="label">${mem.text}</div>
     `;
-    container.appendChild(node);
+    map.appendChild(node);
   });
 }
 
 function openCard(id) {
-  const memory = memories.find(m => m.id === id);
-  if (!memory) return;
-  
-  document.getElementById('cardEmoji').textContent = memory.emoji;
-  document.getElementById('cardImg').src = memory.img;
-  document.getElementById('cardText').textContent = memory.text;
+  const mem = memories.find(m => m.id === id);
+  if (!mem) return;
+  document.getElementById('cardEmoji').textContent = mem.emoji;
+  document.getElementById('cardImg').src = mem.img;
+  document.getElementById('cardText').textContent = mem.text;
   document.getElementById('overlay').classList.add('show');
-  
   const chest = document.querySelector(`[onclick="openCard(${id})"]`);
   if (chest) {
     chest.classList.add('opened');
@@ -778,39 +668,23 @@ function closeCard() {
 }
 
 function updateProgress() {
-  const progress = (openedChests.size / memories.length) * 100;
+  const prog = (openedChests.size / memories.length) * 100;
   document.getElementById('progressCount').textContent = openedChests.size;
-  document.getElementById('progressFill').style.width = progress + '%';
-  
+  document.getElementById('progressFill').style.width = prog + '%';
   if (openedChests.size === memories.length) {
-    showFinal();
+    document.getElementById('finalText').textContent = "You unlocked all memories.\nHere's to 19 and beyond.\nI'm grateful for you every day.\nHappy Birthday.";
+    document.getElementById('finalOverlay').classList.add('show');
   }
-}
-
-function showFinal() {
-  document.getElementById('finalText').textContent = 
-    "You unlocked all memories.\nHere's to 19 and beyond.\nI'm grateful for you every day.\nHappy Birthday.";
-  document.getElementById('finalOverlay').classList.add('show');
 }
 
 function closeFinal() {
   document.getElementById('finalOverlay').classList.remove('show');
 }
 
-// ============ INITIALIZATION ============
-generatePath();
 createMemoryNodes();
 preloader.init();
-
-// Initial position update
-setTimeout(() => {
-  updateCharacterPosition();
-}, 100);
-
-// Resize handler
-window.addEventListener('resize', () => {
-  updateCharacterPosition();
-});
+setTimeout(() => updateCharacterPosition(), 100);
+window.addEventListener('resize', updateCharacterPosition);
 </script>
 
 </body>
