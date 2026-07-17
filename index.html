@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Happy Birthday</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+
+<h1>HAPPY LAST TEEN YEAR, LIL CUH!</h1>
+<div class="sub">click on the emojis, pajeet</div>
+
+
+<div class="progress-wrap">
+  <div class="progress-label"><span id="progressCount">0</span>/30 unlocked</div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+</div>
+
+<div class="map" id="map"></div>
+
+<div class="signature-logo">
+  <img src="images/logo.png" alt="signature mark">
+</div>
+
+
+
+<div class="overlay" id="overlay">
+  <div class="card">
+    <div class="card-emoji" id="cardEmoji"></div>
+    <img id="cardImg" src="" alt="memory photo">
+    <p id="cardText"></p>
+    <button class="close-btn" onclick="closeCard()">CLOSE ✕</button>
+  </div>
+</div>
+
+<div class="final-overlay" id="finalOverlay">
+  <div class="final-card">
+    <div class="final-title">ONE LAST THING</div>
+    <div class="final-text" id="finalText"></div>
+    <button class="final-back" onclick="closeFinal()">BACK TO MEMORIES</button>
+  </div>
+</div>
+
+
+<script src="script.js"></script>
+</body>
+</html>
